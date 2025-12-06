@@ -22,18 +22,20 @@ export default function AdVault() {
   const [editingId, setEditingId] = useState(null);
   const [editTags, setEditTags] = useState('');
 
+  // 1. INITIALIZATION
   useEffect(() => {
     const savedPass = localStorage.getItem('ADVAULT_PASS');
     if (savedPass) { setPassword(savedPass); handleLogin(null, savedPass); }
   }, []);
 
-  // CAROUSEL TIMER
+  // 2. CAROUSEL TIMER
   useEffect(() => {
     let timer;
+    // Only run timer if we are in detail view AND there are multiple images
     if (view === 'detail' && activeCampaign?.image_urls?.length > 1) {
       timer = setInterval(() => {
         setCurrentSlide((prev) => (prev + 1) % activeCampaign.image_urls.length);
-      }, 2500);
+      }, 2500); // 2.5 seconds per slide
     }
     return () => clearInterval(timer);
   }, [view, activeCampaign]);
@@ -129,11 +131,12 @@ export default function AdVault() {
                   </div>
                 </div>
                 <h3 style={{margin: '0 0 5px 0', fontSize: '18px'}}>{camp.title || 'Untitled'}</h3>
+                
+                {/* Truncated Insight */}
                 <p style={{fontSize: '13px', color: '#444', lineHeight:'1.4', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>{camp.insight}</p>
                 
-                {/* READ MORE BUTTON */}
-                <button onClick={() => openDetail(camp)} style={{background:'black', color:'white', border:'none', padding:'8px 12px', fontSize:'12px', cursor:'pointer', marginBottom:'10px', borderRadius:'4px', marginTop:'10px', width:'100%'}}>Read Case Study →</button>
-                
+                <button onClick={() => openDetail(camp)} style={{background:'none', border:'none', color:'#0070f3', padding:0, fontSize:'13px', cursor:'pointer', marginBottom:'10px'}}>Read Case Study →</button>
+
                 {editingId === camp.id ? (
                   <div><input value={editTags} onChange={e => setEditTags(e.target.value)} style={{width:'100%', padding:'5px'}} /><button onClick={() => saveEdit(camp.id)}>Save</button></div>
                 ) : (
