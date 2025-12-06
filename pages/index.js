@@ -28,14 +28,13 @@ export default function AdVault() {
     if (savedPass) { setPassword(savedPass); handleLogin(null, savedPass); }
   }, []);
 
-  // 2. CAROUSEL TIMER
+  // 2. CAROUSEL TIMER (Auto-Play 2.5s)
   useEffect(() => {
     let timer;
-    // Only run timer if we are in detail view AND there are multiple images
     if (view === 'detail' && activeCampaign?.image_urls?.length > 1) {
       timer = setInterval(() => {
         setCurrentSlide((prev) => (prev + 1) % activeCampaign.image_urls.length);
-      }, 2500); // 2.5 seconds per slide
+      }, 2500);
     }
     return () => clearInterval(timer);
   }, [view, activeCampaign]);
@@ -131,12 +130,8 @@ export default function AdVault() {
                   </div>
                 </div>
                 <h3 style={{margin: '0 0 5px 0', fontSize: '18px'}}>{camp.title || 'Untitled'}</h3>
-                
-                {/* Truncated Insight */}
                 <p style={{fontSize: '13px', color: '#444', lineHeight:'1.4', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>{camp.insight}</p>
-                
                 <button onClick={() => openDetail(camp)} style={{background:'none', border:'none', color:'#0070f3', padding:0, fontSize:'13px', cursor:'pointer', marginBottom:'10px'}}>Read Case Study →</button>
-
                 {editingId === camp.id ? (
                   <div><input value={editTags} onChange={e => setEditTags(e.target.value)} style={{width:'100%', padding:'5px'}} /><button onClick={() => saveEdit(camp.id)}>Save</button></div>
                 ) : (
@@ -150,12 +145,12 @@ export default function AdVault() {
         </div>
       )}
 
-      {/* DETAIL MODAL (THE CASE STUDY) */}
+      {/* DETAIL MODAL (CASE STUDY) */}
       {view === 'detail' && activeCampaign && (
-        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.9)', zIndex:200, overflowY:'auto', padding:'20px'}}>
+        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.85)', zIndex:200, overflowY:'auto', padding:'20px'}}>
           <div style={{maxWidth: '800px', margin: '20px auto', background: 'white', borderRadius: '15px', overflow:'hidden', minHeight:'90vh', boxShadow: '0 20px 50px rgba(0,0,0,0.5)'}}>
             
-            {/* 1. CAROUSEL (FORCE SHOW IF ANY IMAGES EXIST) */}
+            {/* 1. CAROUSEL (TOP) */}
             <div style={{width: '100%', height: '500px', background: '#000', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                {activeCampaign.image_urls && activeCampaign.image_urls.length > 0 ? (
                  <img src={activeCampaign.image_urls[currentSlide]} style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain'}} />
@@ -179,14 +174,14 @@ export default function AdVault() {
             {/* 2. CASE STUDY CONTENT */}
             <div style={{padding: '40px'}}>
                
-               {/* HEADER: Title & Brand */}
+               {/* HEADER */}
                <div style={{textAlign: 'center', marginBottom: '30px'}}>
                  <div style={{fontSize: '14px', fontWeight: 'bold', color: '#888', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '10px'}}>
                    {activeCampaign.brand} • {activeCampaign.year}
                  </div>
                  <h1 style={{margin: '0 0 15px 0', fontSize: '42px', lineHeight:'1.1'}}>{activeCampaign.title}</h1>
                  
-                 {/* 3. METADATA ROW (EXACT REQUEST) */}
+                 {/* 3. METADATA ROW */}
                  <div style={{display:'flex', justifyContent:'center', flexWrap:'wrap', gap:'20px', color:'#000', fontSize:'12px', textTransform:'uppercase', fontWeight:'bold', letterSpacing:'0.5px', marginBottom:'20px', borderTop:'1px solid #eee', borderBottom:'1px solid #eee', padding:'15px 0'}}>
                     <span>AGENCY: <span style={{color:'#666'}}>{activeCampaign.agency || 'Unknown'}</span></span>
                     <span>SECTOR: <span style={{color:'#666'}}>{activeCampaign.sector || 'N/A'}</span></span>
@@ -211,8 +206,6 @@ export default function AdVault() {
                <div style={{fontSize: '18px', lineHeight: '1.8', color: '#333', whiteSpace: 'pre-wrap'}}>
                  {activeCampaign.analysis || activeCampaign.summary}
                </div>
-               
-               <div style={{marginTop:'50px', color:'#ccc', fontSize:'10px', textAlign:'center'}}>DEBUG: {activeCampaign.image_urls ? activeCampaign.image_urls.length : 0} Images Found</div>
 
             </div>
           </div>
