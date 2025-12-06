@@ -10,10 +10,7 @@ export default function AdVault() {
   const [activeCampaign, setActiveCampaign] = useState(null); 
   const [currentSlide, setCurrentSlide] = useState(0); 
   
-  // Filter State
   const [activeTag, setActiveTag] = useState(''); 
-  
-  // Analysis & Form State
   const [url, setUrl] = useState('');
   const [userTags, setUserTags] = useState(''); 
   const [step, setStep] = useState('input'); 
@@ -25,19 +22,18 @@ export default function AdVault() {
   const [editingId, setEditingId] = useState(null);
   const [editTags, setEditTags] = useState('');
 
-  // 1. INITIALIZATION
   useEffect(() => {
     const savedPass = localStorage.getItem('ADVAULT_PASS');
     if (savedPass) { setPassword(savedPass); handleLogin(null, savedPass); }
   }, []);
 
-  // 2. CAROUSEL AUTO-PLAY
+  // CAROUSEL TIMER
   useEffect(() => {
     let timer;
     if (view === 'detail' && activeCampaign?.image_urls?.length > 1) {
       timer = setInterval(() => {
         setCurrentSlide((prev) => (prev + 1) % activeCampaign.image_urls.length);
-      }, 2500); // 2.5 seconds
+      }, 2500);
     }
     return () => clearInterval(timer);
   }, [view, activeCampaign]);
@@ -134,7 +130,10 @@ export default function AdVault() {
                 </div>
                 <h3 style={{margin: '0 0 5px 0', fontSize: '18px'}}>{camp.title || 'Untitled'}</h3>
                 <p style={{fontSize: '13px', color: '#444', lineHeight:'1.4', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>{camp.insight}</p>
-                <button onClick={() => openDetail(camp)} style={{background:'none', border:'none', color:'#0070f3', padding:0, fontSize:'13px', cursor:'pointer', marginBottom:'10px'}}>Read More →</button>
+                
+                {/* READ MORE BUTTON */}
+                <button onClick={() => openDetail(camp)} style={{background:'black', color:'white', border:'none', padding:'8px 12px', fontSize:'12px', cursor:'pointer', marginBottom:'10px', borderRadius:'4px', marginTop:'10px', width:'100%'}}>Read Case Study →</button>
+                
                 {editingId === camp.id ? (
                   <div><input value={editTags} onChange={e => setEditTags(e.target.value)} style={{width:'100%', padding:'5px'}} /><button onClick={() => saveEdit(camp.id)}>Save</button></div>
                 ) : (
@@ -148,23 +147,23 @@ export default function AdVault() {
         </div>
       )}
 
-      {/* DETAIL MODAL (CASE STUDY) */}
+      {/* DETAIL MODAL (THE CASE STUDY) */}
       {view === 'detail' && activeCampaign && (
-        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.85)', zIndex:200, overflowY:'auto'}}>
-          <div style={{maxWidth: '800px', margin: '40px auto', background: 'white', borderRadius: '15px', overflow:'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.5)'}}>
+        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.9)', zIndex:200, overflowY:'auto', padding:'20px'}}>
+          <div style={{maxWidth: '800px', margin: '20px auto', background: 'white', borderRadius: '15px', overflow:'hidden', minHeight:'90vh', boxShadow: '0 20px 50px rgba(0,0,0,0.5)'}}>
             
-            {/* 1. CAROUSEL (TOP) */}
-            <div style={{width: '100%', height: '450px', background: '#000', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+            {/* 1. CAROUSEL (FORCE SHOW IF ANY IMAGES EXIST) */}
+            <div style={{width: '100%', height: '500px', background: '#000', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                {activeCampaign.image_urls && activeCampaign.image_urls.length > 0 ? (
                  <img src={activeCampaign.image_urls[currentSlide]} style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain'}} />
-               ) : <div style={{color:'white'}}>No Images</div>}
+               ) : <div style={{color:'white'}}>No Images Found</div>}
                
-               {/* Controls */}
                <button onClick={() => setView('gallery')} style={{position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.3)', color: 'white', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', fontSize: '20px'}}>✕</button>
+               
                {activeCampaign.image_urls?.length > 1 && (
                  <>
-                   <button onClick={prevSlide} style={{position:'absolute', left:'10px', background:'none', border:'none', color:'white', fontSize:'30px', cursor:'pointer'}}>‹</button>
-                   <button onClick={nextSlide} style={{position:'absolute', right:'10px', background:'none', border:'none', color:'white', fontSize:'30px', cursor:'pointer'}}>›</button>
+                   <button onClick={prevSlide} style={{position:'absolute', left:'10px', background:'none', border:'none', color:'white', fontSize:'40px', cursor:'pointer'}}>‹</button>
+                   <button onClick={nextSlide} style={{position:'absolute', right:'10px', background:'none', border:'none', color:'white', fontSize:'40px', cursor:'pointer'}}>›</button>
                    <div style={{position: 'absolute', bottom: '15px', display: 'flex', gap: '8px'}}>
                      {activeCampaign.image_urls.map((_, idx) => (
                        <div key={idx} style={{width: '8px', height: '8px', borderRadius: '50%', background: idx === currentSlide ? 'white' : 'rgba(255,255,255,0.4)', transition: 'background 0.3s'}} />
@@ -177,44 +176,40 @@ export default function AdVault() {
             {/* 2. CASE STUDY CONTENT */}
             <div style={{padding: '40px'}}>
                
-               {/* Header Info */}
+               {/* HEADER: Title & Brand */}
                <div style={{textAlign: 'center', marginBottom: '30px'}}>
-                 <div style={{fontSize: '12px', fontWeight: 'bold', color: '#888', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '10px'}}>
+                 <div style={{fontSize: '14px', fontWeight: 'bold', color: '#888', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '10px'}}>
                    {activeCampaign.brand} • {activeCampaign.year}
                  </div>
-                 <h1 style={{margin: '0 0 15px 0', fontSize: '36px'}}>{activeCampaign.title}</h1>
+                 <h1 style={{margin: '0 0 15px 0', fontSize: '42px', lineHeight:'1.1'}}>{activeCampaign.title}</h1>
                  
-                 {/* KEY METADATA ROW */}
-                 <div style={{display:'flex', justifyContent:'center', gap:'15px', color:'#555', fontSize:'11px', textTransform:'uppercase', fontWeight:'bold', letterSpacing:'0.5px', marginBottom:'15px'}}>
-                    {activeCampaign.agency && <span>{activeCampaign.agency}</span>}
-                    {activeCampaign.agency && <span>•</span>}
-                    {activeCampaign.sector && <span>{activeCampaign.sector}</span>}
-                    {activeCampaign.sector && <span>•</span>}
-                    {activeCampaign.archetype && <span>{activeCampaign.archetype}</span>}
-                    {activeCampaign.archetype && <span>•</span>}
-                    {activeCampaign.format && <span>{activeCampaign.format}</span>}
+                 {/* 3. METADATA ROW (EXACT REQUEST) */}
+                 <div style={{display:'flex', justifyContent:'center', flexWrap:'wrap', gap:'20px', color:'#000', fontSize:'12px', textTransform:'uppercase', fontWeight:'bold', letterSpacing:'0.5px', marginBottom:'20px', borderTop:'1px solid #eee', borderBottom:'1px solid #eee', padding:'15px 0'}}>
+                    <span>AGENCY: <span style={{color:'#666'}}>{activeCampaign.agency || 'Unknown'}</span></span>
+                    <span>SECTOR: <span style={{color:'#666'}}>{activeCampaign.sector || 'N/A'}</span></span>
+                    <span>ARCHETYPE: <span style={{color:'#666'}}>{activeCampaign.archetype || 'N/A'}</span></span>
+                    <span>MEDIUM: <span style={{color:'#666'}}>{activeCampaign.format || 'N/A'}</span></span>
                  </div>
 
-                 {/* SLOGAN & LINK */}
-                 {activeCampaign.slogan && <div style={{fontSize: '20px', fontStyle: 'italic', fontFamily:'serif', color: '#333', marginBottom:'10px'}}>"{activeCampaign.slogan}"</div>}
+                 {activeCampaign.slogan && <div style={{fontSize: '24px', fontStyle: 'italic', fontFamily:'serif', color: '#333', marginBottom:'10px'}}>"{activeCampaign.slogan}"</div>}
                  {activeCampaign.brand_url && (
                     <a href={activeCampaign.brand_url} target="_blank" style={{color: '#0070f3', textDecoration: 'none', fontSize: '14px', fontWeight:'bold'}}>Visit Official Site →</a>
                  )}
                </div>
 
-               <hr style={{border:'none', borderTop:'1px solid #eee', margin:'30px 0'}} />
-
                {/* INSIGHT */}
-               <div style={{background: '#f9f9f9', padding: '25px', borderRadius: '8px', marginBottom: '40px', borderLeft:'4px solid black'}}>
-                 <h4 style={{margin: '0 0 10px 0', textTransform: 'uppercase', fontSize: '12px', color: '#888'}}>The Strategic Insight</h4>
-                 <p style={{fontSize: '18px', lineHeight: '1.5', margin: 0, fontWeight: '500'}}>"{activeCampaign.insight}"</p>
+               <div style={{background: '#f9f9f9', padding: '30px', borderRadius: '8px', marginBottom: '40px', borderLeft:'6px solid black'}}>
+                 <h4 style={{margin: '0 0 10px 0', textTransform: 'uppercase', fontSize: '12px', color: '#888', letterSpacing:'1px'}}>The Strategic Insight</h4>
+                 <p style={{fontSize: '22px', lineHeight: '1.4', margin: 0, fontWeight: '500'}}>"{activeCampaign.insight}"</p>
                </div>
 
                {/* ANALYSIS */}
-               <h3 style={{marginBottom: '15px'}}>Why it Works</h3>
-               <div style={{fontSize: '17px', lineHeight: '1.8', color: '#333', whiteSpace: 'pre-wrap'}}>
+               <h3 style={{marginBottom: '15px', textTransform:'uppercase', fontSize:'14px', letterSpacing:'1px'}}>Creative Analysis</h3>
+               <div style={{fontSize: '18px', lineHeight: '1.8', color: '#333', whiteSpace: 'pre-wrap'}}>
                  {activeCampaign.analysis || activeCampaign.summary}
                </div>
+               
+               <div style={{marginTop:'50px', color:'#ccc', fontSize:'10px', textAlign:'center'}}>DEBUG: {activeCampaign.image_urls ? activeCampaign.image_urls.length : 0} Images Found</div>
 
             </div>
           </div>
@@ -240,6 +235,7 @@ export default function AdVault() {
                 <input value={analysis.title || ''} onChange={e => setAnalysis({...analysis, title: e.target.value})} placeholder="Title" style={inputStyle} />
                 <textarea value={analysis.insight || ''} onChange={e => setAnalysis({...analysis, insight: e.target.value})} placeholder="Insight" style={{...inputStyle, gridColumn:'1/-1', minHeight:'60px'}} />
                 <textarea value={analysis.analysis || ''} onChange={e => setAnalysis({...analysis, analysis: e.target.value})} placeholder="Detailed Analysis" style={{...inputStyle, gridColumn:'1/-1', minHeight:'150px'}} />
+                
                 <input value={analysis.slogan || ''} onChange={e => setAnalysis({...analysis, slogan: e.target.value})} placeholder="Slogan" style={inputStyle} />
                 <input value={analysis.archetype || ''} onChange={e => setAnalysis({...analysis, archetype: e.target.value})} placeholder="Archetype" style={inputStyle} />
                 <input value={analysis.agency || ''} onChange={e => setAnalysis({...analysis, agency: e.target.value})} placeholder="Agency" style={inputStyle} />
