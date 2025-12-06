@@ -16,44 +16,48 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. THE EYES: Smart Scrape
+    // 1. THE EYES
     const response = await fetch(url, {
-      headers: { 
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36' 
-      }
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36' }
     });
     const html = await response.text();
     const $ = cheerio.load(html);
     
     let images = [];
-    
     const ogImage = $('meta[property="og:image"]').attr('content');
     if (ogImage) images.push(ogImage);
-    const twitterImage = $('meta[name="twitter:image"]').attr('content');
-    if (twitterImage) images.push(twitterImage);
-
+    
     $('img').each((i, el) => {
       let src = $(el).attr('src');
       if (src) {
         try {
           const absoluteUrl = new URL(src, url).href;
-          if (!absoluteUrl.includes('icon') && !absoluteUrl.match(/\.(svg|gif)$/i)) {
-            images.push(absoluteUrl);
-          }
+          if (!absoluteUrl.includes('icon') && !absoluteUrl.match(/\.(svg|gif)$/i)) images.push(absoluteUrl);
         } catch (e) {}
       }
     });
-
     images = [...new Set(images)].slice(0, 15);
 
-    // 2. THE BRAIN: Dutch Analysis
+    // 2. THE BRAIN: Creative Director Persona
     const completion = await openai.chat.completions.create({
       model: "perplexity/sonar-pro", 
       messages: [
         {
           role: "system",
-          // UPDATED PROMPT: Added "in Dutch" requirements
-          content: "You are a Senior Creative Strategist. Analyze the URL provided. Search the web for details. Return ONLY a raw JSON object with these keys: title (campaign name), brand, brand_url (official site), agency, year, sector (e.g. Auto, FMCG, Tech), format (e.g. Film, Print, OOH), archetype (Jungian), slogan, insight (strategic hook in Dutch), summary (in Dutch)."
+          content: `You are a Creative Director at a top advertising agency. Analyze the URL provided.
+          
+          Return ONLY a raw JSON object with these keys: 
+          - title (campaign name)
+          - brand
+          - brand_url
+          - agency
+          - year
+          - sector (e.g. Auto, FMCG)
+          - format (e.g. Film, Activation)
+          - archetype (Jungian)
+          - slogan
+          - insight (The core strategic hook, 1 sentence, in DUTCH)
+          - analysis (A deep dive into WHY it works creatively. Discuss the craft, the cultural tension, and the execution. Write 2-3 paragraphs in DUTCH).`
         },
         { role: "user", content: `Analyze this campaign: ${url}` }
       ]
@@ -66,14 +70,13 @@ export default async function handler(req, res) {
     try {
       aiData = JSON.parse(rawText);
     } catch (e) {
-      console.error("JSON Parse Error", rawText);
-      aiData = { brand: "Error parsing AI", summary: rawText };
+      console.error("JSON Error", rawText);
+      aiData = { brand: "Error", analysis: rawText };
     }
 
     res.status(200).json({ success: true, images: images, strategy: aiData });
 
   } catch (error) {
-    console.error("Analysis Failed:", error);
     res.status(500).json({ error: error.message });
   }
 }
