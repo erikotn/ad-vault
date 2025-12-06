@@ -8,7 +8,7 @@ export default function AdVault() {
   // View States
   const [view, setView] = useState('gallery'); // 'gallery', 'add', 'detail'
   const [activeCampaign, setActiveCampaign] = useState(null); 
-  const [currentSlide, setCurrentSlide] = useState(0); // For Carousel
+  const [currentSlide, setCurrentSlide] = useState(0); 
   
   // Filter State
   const [activeTag, setActiveTag] = useState(''); 
@@ -25,19 +25,19 @@ export default function AdVault() {
   const [editingId, setEditingId] = useState(null);
   const [editTags, setEditTags] = useState('');
 
-  // 1. INITIALIZATION & LOGIN
+  // 1. INITIALIZATION
   useEffect(() => {
     const savedPass = localStorage.getItem('ADVAULT_PASS');
     if (savedPass) { setPassword(savedPass); handleLogin(null, savedPass); }
   }, []);
 
-  // 2. CAROUSEL TIMER (Auto-move every 2.5s)
+  // 2. CAROUSEL AUTO-PLAY
   useEffect(() => {
     let timer;
     if (view === 'detail' && activeCampaign?.image_urls?.length > 1) {
       timer = setInterval(() => {
         setCurrentSlide((prev) => (prev + 1) % activeCampaign.image_urls.length);
-      }, 2500);
+      }, 2500); // 2.5 seconds
     }
     return () => clearInterval(timer);
   }, [view, activeCampaign]);
@@ -85,11 +85,13 @@ export default function AdVault() {
 
   function openDetail(camp) {
     setActiveCampaign(camp);
-    setCurrentSlide(0); // Reset carousel to start
+    setCurrentSlide(0);
     setView('detail');
   }
 
-  // Filter Logic
+  function nextSlide() { setCurrentSlide((prev) => (prev + 1) % activeCampaign.image_urls.length); }
+  function prevSlide() { setCurrentSlide((prev) => (prev - 1 + activeCampaign.image_urls.length) % activeCampaign.image_urls.length); }
+
   const allManualTags = campaigns.flatMap(c => c.tags ? c.tags.split(',') : []).map(t => t.trim());
   const uniqueFilters = [...new Set(allManualTags)].sort();
   const filteredCampaigns = campaigns.filter(c => {
@@ -148,63 +150,72 @@ export default function AdVault() {
 
       {/* DETAIL MODAL (CASE STUDY) */}
       {view === 'detail' && activeCampaign && (
-        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.85)', zIndex:200, overflowY:'auto', padding:'20px'}}>
-          <div style={{maxWidth: '800px', margin: '20px auto', background: 'white', borderRadius: '15px', overflow:'hidden', minHeight:'80vh', boxShadow: '0 20px 50px rgba(0,0,0,0.5)'}}>
+        <div style={{position:'fixed', top:0, left:0, right:0, bottom:0, background:'rgba(0,0,0,0.85)', zIndex:200, overflowY:'auto'}}>
+          <div style={{maxWidth: '800px', margin: '40px auto', background: 'white', borderRadius: '15px', overflow:'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.5)'}}>
             
-            {/* 1. CAROUSEL */}
-            <div style={{width: '100%', height: '400px', background: '#000', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+            {/* 1. CAROUSEL (TOP) */}
+            <div style={{width: '100%', height: '450px', background: '#000', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                {activeCampaign.image_urls && activeCampaign.image_urls.length > 0 ? (
-                 <img 
-                   src={activeCampaign.image_urls[currentSlide]} 
-                   style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain'}} 
-                 />
+                 <img src={activeCampaign.image_urls[currentSlide]} style={{maxWidth: '100%', maxHeight: '100%', objectFit: 'contain'}} />
                ) : <div style={{color:'white'}}>No Images</div>}
                
-               {/* Close Button Overlay */}
-               <button onClick={() => setView('gallery')} style={{position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', fontSize: '20px'}}>✕</button>
-               
-               {/* Dots */}
-               <div style={{position: 'absolute', bottom: '20px', display: 'flex', gap: '8px'}}>
-                 {activeCampaign.image_urls && activeCampaign.image_urls.map((_, idx) => (
-                   <div key={idx} style={{width: '8px', height: '8px', borderRadius: '50%', background: idx === currentSlide ? 'white' : 'rgba(255,255,255,0.4)', transition: 'background 0.3s'}} />
-                 ))}
-               </div>
+               {/* Controls */}
+               <button onClick={() => setView('gallery')} style={{position: 'absolute', top: '20px', right: '20px', background: 'rgba(255,255,255,0.3)', color: 'white', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', fontSize: '20px'}}>✕</button>
+               {activeCampaign.image_urls?.length > 1 && (
+                 <>
+                   <button onClick={prevSlide} style={{position:'absolute', left:'10px', background:'none', border:'none', color:'white', fontSize:'30px', cursor:'pointer'}}>‹</button>
+                   <button onClick={nextSlide} style={{position:'absolute', right:'10px', background:'none', border:'none', color:'white', fontSize:'30px', cursor:'pointer'}}>›</button>
+                   <div style={{position: 'absolute', bottom: '15px', display: 'flex', gap: '8px'}}>
+                     {activeCampaign.image_urls.map((_, idx) => (
+                       <div key={idx} style={{width: '8px', height: '8px', borderRadius: '50%', background: idx === currentSlide ? 'white' : 'rgba(255,255,255,0.4)', transition: 'background 0.3s'}} />
+                     ))}
+                   </div>
+                 </>
+               )}
             </div>
 
+            {/* 2. CASE STUDY CONTENT */}
             <div style={{padding: '40px'}}>
-               {/* 2. HEADER INFO */}
+               
+               {/* Header Info */}
                <div style={{textAlign: 'center', marginBottom: '30px'}}>
                  <div style={{fontSize: '12px', fontWeight: 'bold', color: '#888', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '10px'}}>
                    {activeCampaign.brand} • {activeCampaign.year}
                  </div>
-                 <h1 style={{margin: '0 0 10px 0', fontSize: '32px'}}>{activeCampaign.title}</h1>
-                 {activeCampaign.slogan && <div style={{fontSize: '18px', fontStyle: 'italic', color: '#555'}}>"{activeCampaign.slogan}"</div>}
+                 <h1 style={{margin: '0 0 15px 0', fontSize: '36px'}}>{activeCampaign.title}</h1>
+                 
+                 {/* KEY METADATA ROW */}
+                 <div style={{display:'flex', justifyContent:'center', gap:'15px', color:'#555', fontSize:'11px', textTransform:'uppercase', fontWeight:'bold', letterSpacing:'0.5px', marginBottom:'15px'}}>
+                    {activeCampaign.agency && <span>{activeCampaign.agency}</span>}
+                    {activeCampaign.agency && <span>•</span>}
+                    {activeCampaign.sector && <span>{activeCampaign.sector}</span>}
+                    {activeCampaign.sector && <span>•</span>}
+                    {activeCampaign.archetype && <span>{activeCampaign.archetype}</span>}
+                    {activeCampaign.archetype && <span>•</span>}
+                    {activeCampaign.format && <span>{activeCampaign.format}</span>}
+                 </div>
+
+                 {/* SLOGAN & LINK */}
+                 {activeCampaign.slogan && <div style={{fontSize: '20px', fontStyle: 'italic', fontFamily:'serif', color: '#333', marginBottom:'10px'}}>"{activeCampaign.slogan}"</div>}
+                 {activeCampaign.brand_url && (
+                    <a href={activeCampaign.brand_url} target="_blank" style={{color: '#0070f3', textDecoration: 'none', fontSize: '14px', fontWeight:'bold'}}>Visit Official Site →</a>
+                 )}
                </div>
 
-               {/* 3. METADATA GRID */}
-               <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px', background: '#f9f9f9', padding: '20px', borderRadius: '10px', marginBottom: '30px'}}>
-                  <div><strong style={{display:'block', fontSize:'10px', color:'#999', textTransform:'uppercase'}}>Agency</strong> {activeCampaign.agency}</div>
-                  <div><strong style={{display:'block', fontSize:'10px', color:'#999', textTransform:'uppercase'}}>Medium</strong> {activeCampaign.format}</div>
-                  <div><strong style={{display:'block', fontSize:'10px', color:'#999', textTransform:'uppercase'}}>Sector</strong> {activeCampaign.sector}</div>
-                  <div><strong style={{display:'block', fontSize:'10px', color:'#999', textTransform:'uppercase'}}>Archetype</strong> {activeCampaign.archetype}</div>
-                  {activeCampaign.brand_url && (
-                    <div style={{gridColumn: '1 / -1', paddingTop: '10px', borderTop: '1px solid #eee'}}>
-                      <a href={activeCampaign.brand_url} target="_blank" style={{color: '#0070f3', textDecoration: 'none', fontSize: '14px'}}>🌐 Visit Official Brand Site →</a>
-                    </div>
-                  )}
+               <hr style={{border:'none', borderTop:'1px solid #eee', margin:'30px 0'}} />
+
+               {/* INSIGHT */}
+               <div style={{background: '#f9f9f9', padding: '25px', borderRadius: '8px', marginBottom: '40px', borderLeft:'4px solid black'}}>
+                 <h4 style={{margin: '0 0 10px 0', textTransform: 'uppercase', fontSize: '12px', color: '#888'}}>The Strategic Insight</h4>
+                 <p style={{fontSize: '18px', lineHeight: '1.5', margin: 0, fontWeight: '500'}}>"{activeCampaign.insight}"</p>
                </div>
 
-               {/* 4. THE INSIGHT */}
-               <div style={{borderLeft: '4px solid #000', paddingLeft: '20px', marginBottom: '30px'}}>
-                 <h4 style={{margin: '0 0 5px 0', textTransform: 'uppercase', fontSize: '12px', color: '#666'}}>The Insight</h4>
-                 <p style={{fontSize: '20px', lineHeight: '1.4', margin: 0, fontWeight: 'bold'}}>"{activeCampaign.insight}"</p>
-               </div>
-
-               {/* 5. THE ANALYSIS */}
-               <h3 style={{borderBottom: '1px solid #eee', paddingBottom: '10px', marginBottom: '20px'}}>Creative Analysis</h3>
-               <div style={{fontSize: '17px', lineHeight: '1.7', color: '#333', whiteSpace: 'pre-wrap'}}>
+               {/* ANALYSIS */}
+               <h3 style={{marginBottom: '15px'}}>Why it Works</h3>
+               <div style={{fontSize: '17px', lineHeight: '1.8', color: '#333', whiteSpace: 'pre-wrap'}}>
                  {activeCampaign.analysis || activeCampaign.summary}
                </div>
+
             </div>
           </div>
         </div>
@@ -229,10 +240,29 @@ export default function AdVault() {
                 <input value={analysis.title || ''} onChange={e => setAnalysis({...analysis, title: e.target.value})} placeholder="Title" style={inputStyle} />
                 <textarea value={analysis.insight || ''} onChange={e => setAnalysis({...analysis, insight: e.target.value})} placeholder="Insight" style={{...inputStyle, gridColumn:'1/-1', minHeight:'60px'}} />
                 <textarea value={analysis.analysis || ''} onChange={e => setAnalysis({...analysis, analysis: e.target.value})} placeholder="Detailed Analysis" style={{...inputStyle, gridColumn:'1/-1', minHeight:'150px'}} />
-                
                 <input value={analysis.slogan || ''} onChange={e => setAnalysis({...analysis, slogan: e.target.value})} placeholder="Slogan" style={inputStyle} />
                 <input value={analysis.archetype || ''} onChange={e => setAnalysis({...analysis, archetype: e.target.value})} placeholder="Archetype" style={inputStyle} />
                 <input value={analysis.agency || ''} onChange={e => setAnalysis({...analysis, agency: e.target.value})} placeholder="Agency" style={inputStyle} />
                 <input value={analysis.year || ''} onChange={e => setAnalysis({...analysis, year: e.target.value})} placeholder="Year" style={inputStyle} />
                 <input value={analysis.format || ''} onChange={e => setAnalysis({...analysis, format: e.target.value})} placeholder="Medium / Format" style={inputStyle} />
-                <input value={analysis.
+                <input value={analysis.sector || ''} onChange={e => setAnalysis({...analysis, sector: e.target.value})} placeholder="Sector" style={inputStyle} />
+                <input value={userTags} onChange={e => setUserTags(e.target.value)} placeholder="Your Tags (Max 3)" style={{...inputStyle, gridColumn: '1/-1', border: '1px solid black'}} />
+              </div>
+              <h4>Select Assets</h4>
+              <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '10px', marginBottom: '30px'}}>
+                {window.tempImages && window.tempImages.map((img, i) => (
+                  <img key={i} src={img} onClick={() => toggleImage(img)} style={{width: '100%', height: '100px', objectFit: 'cover', cursor: 'pointer', border: selectedImages.includes(img) ? '4px solid #0070f3' : '1px solid #eee', opacity: selectedImages.includes(img) ? 1 : 0.6}} />
+                ))}
+              </div>
+              <button onClick={handleSave} style={{width:'100%', padding:'15px', background:'green', color:'white', border:'none', borderRadius:'5px', cursor:'pointer', fontWeight:'bold'}}>Save to Vault</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const inputStyle = { padding:'12px', border:'1px solid #ddd', borderRadius:'6px', width:'100%' };
+const pill = { padding:'8px 16px', borderRadius:'20px', border:'1px solid #ddd', background:'white', cursor:'pointer', whiteSpace:'nowrap'};
+const activePill = { ...pill, background:'black', color:'white', borderColor:'black' };
