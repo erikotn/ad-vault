@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. THE EYES
+    // 1. THE EYES: Smart Scrape
     const response = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36' }
     });
@@ -26,6 +26,8 @@ export default async function handler(req, res) {
     let images = [];
     const ogImage = $('meta[property="og:image"]').attr('content');
     if (ogImage) images.push(ogImage);
+    const twitterImage = $('meta[name="twitter:image"]').attr('content');
+    if (twitterImage) images.push(twitterImage);
     
     $('img').each((i, el) => {
       let src = $(el).attr('src');
@@ -38,32 +40,33 @@ export default async function handler(req, res) {
     });
     images = [...new Set(images)].slice(0, 15);
 
-    // 2. THE BRAIN: Creative Director Persona
+    // 2. THE BRAIN: The Detective
     const completion = await openai.chat.completions.create({
       model: "perplexity/sonar-pro", 
       messages: [
         {
           role: "system",
-          content: `You are a Creative Director at a top advertising agency. Analyze the URL provided.
+          content: `You are a Senior Creative Strategist. Analyze the URL provided. Search the web for missing details.
           
-          Return ONLY a raw JSON object with these keys: 
-          - title (campaign name)
-          - brand
-          - brand_url
-          - agency
-          - year
-          - sector (e.g. Auto, FMCG)
-          - format (e.g. Film, Activation)
-          - archetype (Jungian)
-          - slogan
-          - insight (The core strategic hook, 1 sentence, in DUTCH)
-          - analysis (A deep dive into WHY it works creatively. Discuss the craft, the cultural tension, and the execution. Write 2-3 paragraphs in DUTCH).`
+          Return ONLY a raw JSON object with these exact keys:
+          - title (The official campaign name)
+          - brand (The brand name)
+          - brand_url (The official website of the brand, e.g. nike.com)
+          - agency (The creative agency, e.g. Wieden+Kennedy)
+          - year (e.g. 2024)
+          - sector (e.g. Automotive, FMCG, Tech, Luxury)
+          - format (The medium, e.g. Film, OOH, Social Activation, Print)
+          - archetype (The Jungian archetype, e.g. The Hero, The Outlaw)
+          - slogan (The tagline of the campaign)
+          - insight (The core strategic hook in one sentence, written in DUTCH)
+          - analysis (A creative critique of why it works, 2 paragraphs, written in DUTCH)`
         },
         { role: "user", content: `Analyze this campaign: ${url}` }
       ]
     });
 
     let rawText = completion.choices[0].message.content;
+    // Clean potential markdown from AI
     rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
     
     let aiData = {};
@@ -71,7 +74,7 @@ export default async function handler(req, res) {
       aiData = JSON.parse(rawText);
     } catch (e) {
       console.error("JSON Error", rawText);
-      aiData = { brand: "Error", analysis: rawText };
+      aiData = { brand: "Error parsing AI", analysis: rawText };
     }
 
     res.status(200).json({ success: true, images: images, strategy: aiData });
