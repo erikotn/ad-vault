@@ -1,52 +1,73 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function AdVault() {
-  const [url, setUrl] = useState('');
+  // Authentication State
   const [password, setPassword] = useState('');
-  const [step, setStep] = useState('input'); // input -> loading -> review -> success
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  
+  // App State
+  const [campaigns, setCampaigns] = useState([]);
+  const [view, setView] = useState('gallery'); // 'gallery' or 'add'
+  
+  // Analysis State
+  const [url, setUrl] = useState('');
+  const [step, setStep] = useState('input'); 
   const [analysis, setAnalysis] = useState(null);
   const [selectedImages, setSelectedImages] = useState([]);
   const [loadingMsg, setLoadingMsg] = useState('');
-  
-  async function handleAnalyze(e) {
+
+  // 1. CHECK LOGIN & FETCH DATA
+  async function handleLogin(e) {
     e.preventDefault();
-    setStep('loading');
-    setLoadingMsg("🕵️‍♂️ Searching the web for credits & strategy...");
-    
+    setLoadingMsg('Unlocking Vault...');
     try {
-      const res = await fetch('/api/analyze', {
+      const res = await fetch('/api/fetch', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ url })
+        body: JSON.stringify({ password })
       });
-      
       const json = await res.json();
-      
       if (json.error) {
-        alert("Error: " + json.error);
-        setStep('input');
+        alert("❌ " + json.error);
       } else {
-        setAnalysis(json.strategy);
-        // Automatically select the first image found as a default
-        if (json.images && json.images.length > 0) {
-          setSelectedImages([json.images[0]]);
-        }
-        // Store all images temporarily so we can pick others
-        window.tempImages = json.images; 
-        setStep('review');
+        setCampaigns(json.data);
+        setIsLoggedIn(true);
       }
     } catch (err) {
-      alert("Failed to connect to backend");
-      setStep('input');
+      alert("Connection failed");
     }
   }
 
+  // 2. ANALYZE (Now Secure)
+  async function handleAnalyze(e) {
+    e.preventDefault();
+    setStep('loading');
+    setLoadingMsg("🕵️‍♂️ Investingating (this costs credits)...");
+    
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ url, password }) // Sending password for verification
+    });
+    
+    const json = await res.json();
+    if (json.error) {
+      alert(json.error);
+      setStep('input');
+    } else {
+      setAnalysis(json.strategy);
+      if (json.images && json.images.length > 0) setSelectedImages([json.images[0]]);
+      window.tempImages = json.images; 
+      setStep('review');
+    }
+  }
+
+  // 3. SAVE & RETURN TO GALLERY
   async function handleSave() {
-    // Combine the AI strategy data with the images you picked
     const finalData = {
       ...analysis,
       source_url: url,
-      image_urls: selectedImages // This saves the list of links
+      image_urls: selectedImages
     };
 
     const res = await fetch('/api/save', {
@@ -56,122 +77,122 @@ export default function AdVault() {
     });
 
     if (res.ok) {
-      setStep('success');
+      // Refresh the gallery
+      const refresh = await fetch('/api/fetch', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ password })
+      });
+      const refreshJson = await refresh.json();
+      setCampaigns(refreshJson.data);
+      
+      // Reset and go back
+      setView('gallery');
+      setStep('input');
       setUrl('');
       setAnalysis(null);
-      setSelectedImages([]);
     } else {
-      alert("Failed to save. Check your password.");
+      alert("Save failed.");
     }
   }
 
   function toggleImage(img) {
-    if (selectedImages.includes(img)) {
-      setSelectedImages(selectedImages.filter(i => i !== img));
-    } else {
-      setSelectedImages([...selectedImages, img]);
-    }
+    if (selectedImages.includes(img)) setSelectedImages(selectedImages.filter(i => i !== img));
+    else setSelectedImages([...selectedImages, img]);
+  }
+
+  // --- RENDER ---
+
+  if (!isLoggedIn) {
+    return (
+      <div style={{height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#111', color: 'white'}}>
+        <form onSubmit={handleLogin} style={{display:'flex', flexDirection:'column', gap:'15px', width:'300px'}}>
+          <h1 style={{textAlign:'center'}}>AdVault 🔒</h1>
+          <input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Enter Admin Password" style={{padding:'15px', borderRadius:'5px', border:'none'}} />
+          <button style={{padding:'15px', background:'white', color:'black', border:'none', borderRadius:'5px', fontWeight:'bold', cursor:'pointer'}}>Unlock</button>
+        </form>
+      </div>
+    );
   }
 
   return (
-    <div style={{maxWidth: '900px', margin: '50px auto', fontFamily: 'sans-serif', padding: '20px'}}>
-      <h1 style={{textAlign: 'center', marginBottom: '40px'}}>AdVault 🧠</h1>
+    <div style={{fontFamily: 'sans-serif', background: '#f5f5f5', minHeight: '100vh'}}>
+      
+      {/* HEADER */}
+      <div style={{background: 'white', padding: '20px', borderBottom: '1px solid #ddd', position: 'sticky', top: 0, zIndex: 100, display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+        <h2 style={{margin:0}}>AdVault</h2>
+        {view === 'gallery' && (
+          <button onClick={() => setView('add')} style={{background: 'black', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold'}}>
+            + Add Campaign
+          </button>
+        )}
+      </div>
 
-      {/* STEP 1: INPUT */}
-      {step === 'input' && (
-        <div style={{textAlign: 'center'}}>
-           <form onSubmit={handleAnalyze} style={{maxWidth: '600px', margin: '0 auto', display:'flex', gap:'10px'}}>
-            <input 
-              type="url" required placeholder="Paste Campaign URL (YouTube, AdAge, Behance...)" 
-              value={url} onChange={e => setUrl(e.target.value)}
-              style={{flex: 1, padding: '15px', fontSize: '16px', borderRadius: '8px', border: '1px solid #ccc'}}
-            />
-            <button style={{padding: '15px 30px', background: 'black', color: 'white', border:'none', borderRadius: '8px', cursor:'pointer', fontWeight: 'bold'}}>
-              Analyze
-            </button>
-          </form>
-          <p style={{marginTop: '20px', color: '#666'}}>The AI will search the web for the Brand, Agency, and Strategy.</p>
-        </div>
-      )}
-
-      {/* STEP 2: LOADING */}
-      {step === 'loading' && (
-        <div style={{textAlign: 'center', padding: '50px'}}>
-           <h2>{loadingMsg}</h2>
-           <p>This usually takes 5-10 seconds.</p>
-        </div>
-      )}
-
-      {/* STEP 3: REVIEW */}
-      {step === 'review' && analysis && (
-        <div>
-          {/* Metadata Section */}
-          <div style={{background: '#f9f9f9', padding: '25px', borderRadius: '12px', marginBottom: '30px', border: '1px solid #eee'}}>
-            <h3 style={{marginTop: 0}}>Strategy Review</h3>
-            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px'}}>
-              <div>
-                <label style={{fontSize: '12px', fontWeight: 'bold', color: '#666'}}>BRAND</label>
-                <input value={analysis.brand} onChange={e => setAnalysis({...analysis, brand: e.target.value})} style={{width: '100%', padding: '10px', marginTop: '5px', borderRadius: '5px', border: '1px solid #ddd'}} />
-              </div>
-              <div>
-                <label style={{fontSize: '12px', fontWeight: 'bold', color: '#666'}}>AGENCY</label>
-                <input value={analysis.agency} onChange={e => setAnalysis({...analysis, agency: e.target.value})} style={{width: '100%', padding: '10px', marginTop: '5px', borderRadius: '5px', border: '1px solid #ddd'}} />
-              </div>
-              <div style={{gridColumn: '1 / -1'}}>
-                <label style={{fontSize: '12px', fontWeight: 'bold', color: '#666'}}>INSIGHT</label>
-                <textarea value={analysis.insight} onChange={e => setAnalysis({...analysis, insight: e.target.value})} style={{width: '100%', padding: '10px', marginTop: '5px', borderRadius: '5px', border: '1px solid #ddd', minHeight: '60px'}} />
-              </div>
-              <div>
-                <label style={{fontSize: '12px', fontWeight: 'bold', color: '#666'}}>ARCHETYPE</label>
-                <input value={analysis.archetype} onChange={e => setAnalysis({...analysis, archetype: e.target.value})} style={{width: '100%', padding: '10px', marginTop: '5px', borderRadius: '5px', border: '1px solid #ddd'}} />
-              </div>
-              <div>
-                <label style={{fontSize: '12px', fontWeight: 'bold', color: '#666'}}>YEAR</label>
-                <input value={analysis.year} onChange={e => setAnalysis({...analysis, year: e.target.value})} style={{width: '100%', padding: '10px', marginTop: '5px', borderRadius: '5px', border: '1px solid #ddd'}} />
+      {/* VIEW: GALLERY (Masonry Moodboard) */}
+      {view === 'gallery' && (
+        <div style={{padding: '20px', columnCount: 3, columnGap: '20px'}}>
+          {campaigns.map(camp => (
+            <div key={camp.id} style={{background: 'white', borderRadius: '10px', marginBottom: '20px', breakInside: 'avoid', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.05)'}}>
+              {/* Cover Image */}
+              {camp.image_urls && camp.image_urls[0] && (
+                <img src={camp.image_urls[0]} style={{width: '100%', display: 'block'}} />
+              )}
+              
+              <div style={{padding: '15px'}}>
+                <div style={{fontSize: '10px', fontWeight: 'bold', color: '#888', textTransform: 'uppercase', marginBottom: '5px'}}>{camp.brand}</div>
+                <h3 style={{margin: '0 0 5px 0', fontSize: '16px'}}>{camp.title || 'Untitled'}</h3>
+                <div style={{fontSize: '14px', color: '#555', marginBottom: '10px'}}>{camp.insight}</div>
+                
+                {/* Tags */}
+                <div style={{display: 'flex', flexWrap: 'wrap', gap: '5px'}}>
+                  {camp.archetype && <span style={{background: '#eee', padding: '3px 8px', borderRadius: '4px', fontSize: '10px'}}>#{camp.archetype}</span>}
+                  {camp.sector && <span style={{background: '#eee', padding: '3px 8px', borderRadius: '4px', fontSize: '10px'}}>#{camp.sector}</span>}
+                </div>
               </div>
             </div>
-          </div>
-
-          {/* Image Picker Section */}
-          <h3 style={{marginBottom: '15px'}}>Select Assets to Keep ({selectedImages.length})</h3>
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '15px', marginBottom: '30px'}}>
-            {window.tempImages && window.tempImages.map((img, i) => (
-              <div 
-                key={i} 
-                onClick={() => toggleImage(img)}
-                style={{
-                  height: '150px', cursor: 'pointer', borderRadius: '8px', overflow: 'hidden',
-                  border: selectedImages.includes(img) ? '4px solid #0070f3' : '1px solid #eee',
-                  opacity: selectedImages.includes(img) ? 1 : 0.7,
-                  transition: 'all 0.2s'
-                }}
-              >
-                <img src={img} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
-              </div>
-            ))}
-          </div>
-
-          {/* Save Bar */}
-          <div style={{display: 'flex', gap: '15px', alignItems: 'center', borderTop: '1px solid #eee', paddingTop: '20px'}}>
-            <input 
-              type="password" placeholder="Admin Password" 
-              value={password} onChange={e => setPassword(e.target.value)}
-              style={{padding: '12px', border: '1px solid #ccc', borderRadius: '5px'}}
-            />
-            <button onClick={handleSave} style={{padding: '12px 30px', background: 'black', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold'}}>
-              Save to Vault
-            </button>
-            <button onClick={() => setStep('input')} style={{padding: '12px', background: 'none', border: 'none', cursor: 'pointer', color: '#666'}}>Cancel</button>
-          </div>
+          ))}
+          {campaigns.length === 0 && <p style={{textAlign: 'center', marginTop: '50px', color: '#888'}}>Vault is empty. Add a campaign!</p>}
         </div>
       )}
 
-      {/* STEP 4: SUCCESS */}
-      {step === 'success' && (
-        <div style={{textAlign: 'center', color: 'green', padding: '50px'}}>
-          <h1 style={{fontSize: '40px'}}>✅</h1>
-          <h2>Campaign Saved!</h2>
-          <button onClick={() => setStep('input')} style={{marginTop: '20px', padding: '15px 30px', background: 'black', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer'}}>Add Another</button>
+      {/* VIEW: ADD MODAL */}
+      {view === 'add' && (
+        <div style={{maxWidth: '800px', margin: '40px auto', background: 'white', padding: '30px', borderRadius: '15px', boxShadow: '0 5px 30px rgba(0,0,0,0.1)'}}>
+          <div style={{display:'flex', justifyContent:'space-between', marginBottom:'20px'}}>
+            <h2>New Entry</h2>
+            <button onClick={() => setView('gallery')} style={{background:'none', border:'none', fontSize:'20px', cursor:'pointer'}}>✕</button>
+          </div>
+
+          {step === 'input' && (
+            <form onSubmit={handleAnalyze} style={{display:'flex', gap:'10px'}}>
+              <input type="url" required placeholder="Paste Campaign URL..." value={url} onChange={e => setUrl(e.target.value)} style={{flex: 1, padding: '15px', border: '1px solid #ddd', borderRadius: '5px'}} />
+              <button style={{padding: '15px 30px', background: 'black', color: 'white', border:'none', borderRadius: '5px', cursor:'pointer'}}>Analyze</button>
+            </form>
+          )}
+
+          {step === 'loading' && <p style={{textAlign:'center', padding:'40px'}}>{loadingMsg}</p>}
+
+          {step === 'review' && analysis && (
+            <div>
+              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px'}}>
+                <input value={analysis.brand} onChange={e => setAnalysis({...analysis, brand: e.target.value})} placeholder="Brand" style={{padding:'10px', border:'1px solid #ddd'}} />
+                <input value={analysis.agency} onChange={e => setAnalysis({...analysis, agency: e.target.value})} placeholder="Agency" style={{padding:'10px', border:'1px solid #ddd'}} />
+                <textarea value={analysis.insight} onChange={e => setAnalysis({...analysis, insight: e.target.value})} placeholder="Insight" style={{gridColumn:'1/-1', padding:'10px', border:'1px solid #ddd'}} />
+                <input value={analysis.archetype} onChange={e => setAnalysis({...analysis, archetype: e.target.value})} placeholder="Archetype" style={{padding:'10px', border:'1px solid #ddd'}} />
+              </div>
+
+              <h4>Select Images for Board</h4>
+              <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '10px', marginBottom: '20px'}}>
+                {window.tempImages && window.tempImages.map((img, i) => (
+                  <img 
+                    key={i} src={img} onClick={() => toggleImage(img)}
+                    style={{width: '100%', height: '100px', objectFit: 'cover', cursor: 'pointer', border: selectedImages.includes(img) ? '3px solid blue' : '1px solid #eee', opacity: selectedImages.includes(img) ? 1 : 0.6}} 
+                  />
+                ))}
+              </div>
+              <button onClick={handleSave} style={{width:'100%', padding:'15px', background:'green', color:'white', border:'none', borderRadius:'5px', cursor:'pointer', fontWeight:'bold'}}>Save to Vault</button>
+            </div>
+          )}
         </div>
       )}
     </div>
