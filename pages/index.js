@@ -12,11 +12,15 @@ export default function AdVault() {
 
   // Analysis & Form State
   const [url, setUrl] = useState('');
-  const [userTags, setUserTags] = useState(''); // Manual tags
+  const [userTags, setUserTags] = useState(''); 
   const [step, setStep] = useState('input'); 
   const [analysis, setAnalysis] = useState(null);
   const [selectedImages, setSelectedImages] = useState([]);
   const [loadingMsg, setLoadingMsg] = useState('');
+
+  // Editing State
+  const [editingId, setEditingId] = useState(null);
+  const [editTags, setEditTags] = useState('');
 
   // 1. INITIALIZATION & LOGIN
   useEffect(() => {
@@ -76,16 +80,11 @@ export default function AdVault() {
 
   // 3. SAVE
   async function handleSave() {
-    // Logic: Process tags (split by comma, trim, max 3)
-    const processedTags = userTags.split(',')
-      .map(t => t.trim().toLowerCase())
-      .filter(t => t.length > 0)
-      .slice(0, 3)
-      .join(', ');
+    const processedTags = processTags(userTags);
 
     const finalData = {
       ...analysis,
-      tags: processedTags, // Save manual tags
+      tags: processedTags, 
       source_url: url,
       image_urls: selectedImages
     };
@@ -97,7 +96,6 @@ export default function AdVault() {
     });
 
     if (res.ok) {
-      // Refresh list
       handleLogin(null, password);
       setView('gallery');
       setStep('input');
@@ -120,10 +118,42 @@ export default function AdVault() {
     });
     
     if (res.ok) {
-      handleLogin(null, password); // Refresh
+      handleLogin(null, password); 
     } else {
       alert("Delete failed.");
     }
+  }
+
+  // 5. UPDATE (EDIT TAGS)
+  function startEditing(camp) {
+    setEditingId(camp.id);
+    setEditTags(camp.tags || '');
+  }
+
+  async function saveEdit(id) {
+    const processedTags = processTags(editTags);
+    
+    const res = await fetch('/api/update', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ id, tags: processedTags, password })
+    });
+
+    if (res.ok) {
+      setEditingId(null);
+      handleLogin(null, password); // Refresh
+    } else {
+      alert("Update failed.");
+    }
+  }
+
+  // Helper
+  function processTags(str) {
+    return str.split(',')
+      .map(t => t.trim().toLowerCase())
+      .filter(t => t.length > 0)
+      .slice(0, 3)
+      .join(', ');
   }
 
   function toggleImage(img) {
@@ -131,20 +161,14 @@ export default function AdVault() {
     else setSelectedImages([...selectedImages, img]);
   }
 
-  // 5. FILTER LOGIC
-  // Collect all unique manual tags + sectors + archetypes for the filter bar
+  // 6. FILTER LOGIC (STRICT USER TAGS ONLY)
+  // We only pull from 'tags', IGNORING sector/archetype for the top bar
   const allManualTags = campaigns.flatMap(c => c.tags ? c.tags.split(',') : []).map(t => t.trim());
-  const allSectors = campaigns.map(c => c.sector).filter(Boolean);
-  const allArchetypes = campaigns.map(c => c.archetype).filter(Boolean);
-  
-  const uniqueFilters = [...new Set([...allManualTags, ...allSectors, ...allArchetypes])].sort();
+  const uniqueFilters = [...new Set(allManualTags)].sort();
 
   const filteredCampaigns = campaigns.filter(c => {
     if (!activeTag) return true;
-    const tagMatch = c.tags && c.tags.includes(activeTag);
-    const sectorMatch = c.sector === activeTag;
-    const archMatch = c.archetype === activeTag;
-    return tagMatch || sectorMatch || archMatch;
+    return c.tags && c.tags.includes(activeTag);
   });
 
   // --- RENDER ---
@@ -172,7 +196,7 @@ export default function AdVault() {
           )}
         </div>
 
-        {/* FILTER BAR */}
+        {/* FILTER BAR (USER TAGS ONLY) */}
         {view === 'gallery' && (
           <div style={{display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '5px', scrollbarWidth:'none'}}>
             <button onClick={() => setActiveTag('')} style={activeTag === '' ? activePill : pill}>All</button>
@@ -195,7 +219,7 @@ export default function AdVault() {
               )}
               
               <div style={{padding: '15px'}}>
-                {/* Header: Brand & Delete */}
+                {/* Header */}
                 <div style={{display:'flex', justifyContent:'space-between', alignItems:'start'}}>
                   <div style={{fontSize: '10px', fontWeight: 'bold', color: '#888', textTransform: 'uppercase', marginBottom: '5px'}}>
                     {camp.brand} • {camp.year}
@@ -204,29 +228,46 @@ export default function AdVault() {
                 </div>
 
                 <h3 style={{margin: '0 0 5px 0', fontSize: '18px'}}>{camp.title || 'Untitled'}</h3>
-                
                 {camp.slogan && <div style={{fontStyle:'italic', color:'#555', marginBottom:'10px', fontSize:'12px'}}>"{camp.slogan}"</div>}
                 
-                {/* Brand URL Link */}
-                {camp.brand_url && (
-                   <a href={camp.brand_url} target="_blank" style={{display:'block', fontSize:'11px', color:'#0070f3', textDecoration:'none', marginBottom:'10px'}}>Visit Brand Site →</a>
-                )}
+                {/* Links */}
+                {camp.brand_url && <a href={camp.brand_url} target="_blank" style={{display:'block', fontSize:'11px', color:'#0070f3', textDecoration:'none', marginBottom:'5px'}}>Visit Brand Site →</a>}
+                {camp.source_url && <a href={camp.source_url} target="_blank" style={{display:'block', fontSize:'11px', color:'#0070f3', textDecoration:'none', marginBottom:'10px'}}>View Original →</a>}
 
                 <p style={{fontSize: '13px', color: '#444', lineHeight:'1.4', background:'#f9f9f9', padding:'10px', borderRadius:'5px'}}>{camp.insight}</p>
                 
-                {/* Metadata Tags */}
-                <div style={{display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop:'10px'}}>
-                  {/* AI Tags */}
-                  {[camp.archetype, camp.sector, camp.format].map((tag, i) => tag && (
-                    <span key={'ai'+i} style={{background: '#eef', padding: '3px 8px', borderRadius: '4px', fontSize: '10px', textTransform:'uppercase', color:'#336'}}>{tag}</span>
-                  ))}
-                  {/* User Tags */}
-                  {camp.tags && camp.tags.split(',').map((tag, i) => (
-                    <span key={'user'+i} style={{background: '#eee', padding: '3px 8px', borderRadius: '4px', fontSize: '10px', textTransform:'uppercase'}}>{tag}</span>
+                {/* EDITABLE TAGS */}
+                {editingId === camp.id ? (
+                  <div style={{marginTop:'10px'}}>
+                    <input 
+                      value={editTags} 
+                      onChange={e => setEditTags(e.target.value)} 
+                      placeholder="funny, smart (max 3)"
+                      autoFocus
+                      style={{width:'100%', padding:'8px', border:'1px solid black', borderRadius:'4px', marginBottom:'5px'}}
+                    />
+                    <div style={{display:'flex', gap:'5px'}}>
+                      <button onClick={() => saveEdit(camp.id)} style={{flex:1, background:'green', color:'white', border:'none', borderRadius:'3px', padding:'5px', cursor:'pointer'}}>Save</button>
+                      <button onClick={() => setEditingId(null)} style={{flex:1, background:'#ccc', border:'none', borderRadius:'3px', padding:'5px', cursor:'pointer'}}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{display: 'flex', flexWrap: 'wrap', gap: '5px', marginTop:'10px', alignItems:'center'}}>
+                    {/* Only show User Tags in Grey */}
+                    {camp.tags && camp.tags.split(',').map((tag, i) => (
+                      <span key={'user'+i} style={{background: '#eee', padding: '3px 8px', borderRadius: '4px', fontSize: '10px', textTransform:'uppercase'}}>{tag}</span>
+                    ))}
+                    {/* Edit Pencil */}
+                    <button onClick={() => startEditing(camp)} style={{background:'none', border:'none', cursor:'pointer', fontSize:'14px', color:'#999'}}>✎</button>
+                  </div>
+                )}
+
+                {/* AI Tags (Visual only, not in filter) */}
+                <div style={{marginTop:'10px', borderTop:'1px solid #eee', paddingTop:'5px'}}>
+                   {[camp.archetype, camp.sector, camp.format].map((tag, i) => tag && (
+                    <span key={'ai'+i} style={{color:'#999', fontSize:'9px', marginRight:'5px', textTransform:'uppercase'}}>{tag}</span>
                   ))}
                 </div>
-
-                <div style={{fontSize:'10px', color:'#999', marginTop:'15px', textAlign:'right'}}>{camp.agency}</div>
               </div>
             </div>
           ))}
@@ -252,7 +293,6 @@ export default function AdVault() {
 
           {step === 'review' && analysis && (
             <div>
-              {/* METADATA GRID */}
               <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px'}}>
                 <input value={analysis.brand || ''} onChange={e => setAnalysis({...analysis, brand: e.target.value})} placeholder="Brand" style={inputStyle} />
                 <input value={analysis.brand_url || ''} onChange={e => setAnalysis({...analysis, brand_url: e.target.value})} placeholder="Brand URL" style={inputStyle} />
@@ -267,10 +307,10 @@ export default function AdVault() {
                 <input value={analysis.agency || ''} onChange={e => setAnalysis({...analysis, agency: e.target.value})} placeholder="Agency" style={inputStyle} />
                 <input value={analysis.year || ''} onChange={e => setAnalysis({...analysis, year: e.target.value})} placeholder="Year" style={inputStyle} />
                 
-                <input value={analysis.sector || ''} onChange={e => setAnalysis({...analysis, sector: e.target.value})} placeholder="Sector (e.g. Auto)" style={inputStyle} />
-                <input value={analysis.format || ''} onChange={e => setAnalysis({...analysis, format: e.target.value})} placeholder="Format (e.g. Film)" style={inputStyle} />
+                <input value={analysis.sector || ''} onChange={e => setAnalysis({...analysis, sector: e.target.value})} placeholder="Sector" style={inputStyle} />
+                <input value={analysis.format || ''} onChange={e => setAnalysis({...analysis, format: e.target.value})} placeholder="Format" style={inputStyle} />
                 
-                {/* NEW TAG INPUT */}
+                {/* MANUAL TAGS INPUT */}
                 <input 
                   value={userTags} 
                   onChange={e => setUserTags(e.target.value)} 
@@ -297,7 +337,6 @@ export default function AdVault() {
   );
 }
 
-// Styles
 const inputStyle = { padding:'12px', border:'1px solid #ddd', borderRadius:'6px', width:'100%' };
 const pill = { padding:'8px 16px', borderRadius:'20px', border:'1px solid #ddd', background:'white', cursor:'pointer', whiteSpace:'nowrap'};
 const activePill = { ...pill, background:'black', color:'white', borderColor:'black' };
